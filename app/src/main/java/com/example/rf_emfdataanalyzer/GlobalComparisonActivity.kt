@@ -65,14 +65,19 @@ class GlobalComparisonActivity : AppCompatActivity() {
         graphGlobal.setMaxVisibleValueCount(150)
     }
 
-    private fun createSet(b:Boolean): LineDataSet {
-        val set = LineDataSet(null, "Dynamic DataSet" + if(b) "1" else "2")
+    private fun createSet(global:Boolean): LineDataSet {
+        val set = LineDataSet(null, "" + if(global) "Global data" else "Your data")
         set.axisDependency = YAxis.AxisDependency.LEFT
         set.lineWidth = 3f
-        if(b)
+        if(global) {
             set.color = Color.MAGENTA
-        else
-            set.color = Color.GREEN
+            set.fillColor = Color.GREEN
+        }
+        else {
+            set.color = Color.BLUE
+            set.fillColor = Color.RED
+        }
+
         set.mode = LineDataSet.Mode.CUBIC_BEZIER
         set.cubicIntensity = 0.2f
         set.setDrawCircles(false)
