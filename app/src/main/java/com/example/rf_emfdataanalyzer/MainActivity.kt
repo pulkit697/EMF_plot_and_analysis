@@ -8,7 +8,6 @@ import android.hardware.SensorManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
-import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.YAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
@@ -35,7 +34,7 @@ class MainActivity : AppCompatActivity() {
                 x += 0.1f
                 if (event!=null)
                     addEntry(event)
-                graph.data = data
+                graphLive.data = data
             }
 
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
@@ -46,29 +45,29 @@ class MainActivity : AppCompatActivity() {
         if (sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) !=null)
         {
             tvError.visibility = View.GONE
-            graph.visibility = View.VISIBLE
+            graphLive.visibility = View.VISIBLE
 
             setUpGraph()
-            graph.data = data
+            graphLive.data = data
 
             sensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
             sensorManager.registerListener(sensorEventListener,sensor,SensorManager.SENSOR_DELAY_NORMAL)
         }
         else
         {
-            graph.visibility=View.GONE
+            graphLive.visibility=View.GONE
         }
     }
 
     private fun setUpGraph()
     {
-        graph.setTouchEnabled(false)
-        graph.isDragEnabled = false
-        graph.setScaleEnabled(false)
-        graph.setDrawGridBackground(false)
-        graph.setPinchZoom(false)
-        graph.setBackgroundColor(Color.WHITE)
-        graph.setMaxVisibleValueCount(150)
+        graphLive.setTouchEnabled(false)
+        graphLive.isDragEnabled = false
+        graphLive.setScaleEnabled(false)
+        graphLive.setDrawGridBackground(false)
+        graphLive.setPinchZoom(false)
+        graphLive.setBackgroundColor(Color.WHITE)
+        graphLive.setMaxVisibleValueCount(150)
     }
 
     private fun createSet():LineDataSet
@@ -87,7 +86,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun addEntry(event: SensorEvent)
     {
-        val data = graph.data
+        val data = graphLive.data
         if(data!=null) {
             var set = data.getDataSetByIndex(0)
             if(set==null) {
@@ -96,8 +95,8 @@ class MainActivity : AppCompatActivity() {
             }
             data.addEntry(Entry(set.entryCount.toFloat(),event.values[0]),0)
             data.notifyDataChanged()
-            graph.data=data
-            graph.moveViewToX(data.entryCount.toFloat())
+            graphLive.data=data
+            graphLive.moveViewToX(data.entryCount.toFloat())
         }
     }
 }

@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">RF-EMF data analyzer</string>
     <string name="error_no_sensor">appropriate sensors were not found in the device</string>
+    <string name="data_fetching">fetching data from the internet....</string>
 </resources>

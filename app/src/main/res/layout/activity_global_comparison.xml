@@ -5,9 +5,20 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".GlobalComparisonActivity">
+    <TextView
+        android:id="@+id/tvFetchError"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="10dp"
+        android:gravity="center"
+        android:textSize="22sp"
+        android:text="@string/data_fetching"
+        />
     <com.github.mikephil.charting.charts.LineChart
+        android:id="@+id/graphGlobal"
         android:layout_height="match_parent"
         android:layout_width="match_parent"
-        android:layout_margin="40dp"
+        android:visibility="gone"
+        android:layout_margin="10dp"
         />
 </androidx.constraintlayout.widget.ConstraintLayout>
