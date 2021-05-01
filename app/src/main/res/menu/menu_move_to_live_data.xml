@@ -4,7 +4,7 @@
     <item
         android:id="@+id/bt_menu_move_to_live_data"
         app:showAsAction="always"
-        android:title="Live Graph"
+        android:title="Global Graph"
         android:icon="@drawable/ic_go_to_live_graph"
 
         />

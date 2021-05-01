@@ -1,5 +1,8 @@
 package com.example.rf_emfdataanalyzer
 
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Color
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -7,12 +10,17 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
+import androidx.work.*
 import com.github.mikephil.charting.components.YAxis
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import kotlinx.android.synthetic.main.activity_main.*
+import java.util.concurrent.TimeUnit
+import kotlin.math.sqrt
 
 class MainActivity : AppCompatActivity() {
     lateinit var sensorManager: SensorManager
@@ -27,6 +35,12 @@ class MainActivity : AppCompatActivity() {
 
         val data = LineData()
         data.setValueTextColor(Color.WHITE)
+
+        btStartSensing.setOnClickListener {
+            startSensing()
+        }
+
+
 
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         sensorEventListener = object : SensorEventListener{
@@ -57,6 +71,41 @@ class MainActivity : AppCompatActivity() {
         {
             graphLive.visibility=View.GONE
         }
+    }
+
+    private fun startSensing() {
+        /* start service here*/
+        val workRequest = PeriodicWorkRequestBuilder<SaveDataJobService>(30,TimeUnit.MINUTES)
+            .setInitialDelay(0,TimeUnit.MINUTES)
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork("emf work",ExistingPeriodicWorkPolicy.KEEP,workRequest)
+        val workRequestUpload = PeriodicWorkRequestBuilder<UploadDataWorkClass>(1,TimeUnit.HOURS)
+            .setInitialDelay(0,TimeUnit.SECONDS)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork("uploading work",ExistingPeriodicWorkPolicy.KEEP,workRequestUpload)
+        val pref = getSharedPreferences(SHARED_PREF_NAME,Context.MODE_PRIVATE)
+        pref.edit().putBoolean("SensingStarted",true).apply()
+        btStartSensing.isEnabled = false
+    }
+
+    private fun isSensingStarted():Boolean {
+        val pref = getSharedPreferences(SHARED_PREF_NAME,Context.MODE_PRIVATE)
+        return pref.getBoolean("SensingStarted",false)
+    }
+
+    // Menu part
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_move_to_live_data, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return if (item.itemId == R.id.bt_menu_move_to_live_data) {
+            startActivity(Intent(this, GlobalComparisonActivity::class.java))
+            true
+        } else
+            super.onOptionsItemSelected(item)
     }
 
     private fun setUpGraph()
@@ -93,7 +142,11 @@ class MainActivity : AppCompatActivity() {
                 set=createSet()
                 data.addDataSet(set)
             }
-            data.addEntry(Entry(set.entryCount.toFloat(),event.values[0]),0)
+            val x = event.values[0]
+            val y = event.values[1]
+            val z = event.values[2]
+            val sensorData= sqrt(x*x + y*y + z*z)
+            data.addEntry(Entry(set.entryCount.toFloat(),sensorData),0)
             data.notifyDataChanged()
             graphLive.data=data
             graphLive.moveViewToX(data.entryCount.toFloat())

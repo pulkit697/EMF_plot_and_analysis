@@ -1,13 +1,19 @@
 package com.example.rf_emfdataanalyzer
 
+import android.app.job.JobInfo
+import android.app.job.JobScheduler
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import com.github.mikephil.charting.components.YAxis
 import com.github.mikephil.charting.data.Entry
@@ -17,42 +23,29 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.android.synthetic.main.activity_global_comparison.*
 import kotlinx.coroutines.*
+import java.util.*
+import kotlin.collections.HashMap
 import kotlin.random.Random
 
 class GlobalComparisonActivity : AppCompatActivity() {
     private val dbGlobalRoot = FirebaseFirestore.getInstance()
-    private val arrTimeToXAxis = arrayOf(
-        "12A", "1A", "2A", "3A", "4A", "5A", "6A", "7A", "8A", "9A", "10A", "11A",
-        "12P", "1P", "2P", "3P", "4P", "5P", "6P", "7P", "8P", "9P", "10P", "11P"
-    )
+
     var isFetchingComplete = false
     private val mAuth = FirebaseAuth.getInstance()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_global_comparison)
         setUpGraph()
-//        loadRandomData()
         GlobalScope.launch(Dispatchers.IO) {
             val data = LineData(fetchGlobalData(),fetchMyData())
             if(isFetchingComplete)
                 switchOnGraphMode(data)
         }
+//        fetchSharedPrefs()
 //        loadRandomData()
     }
 
-    // Menu part
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.menu_move_to_live_data, menu)
-        return true
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return if (item.itemId == R.id.bt_menu_move_to_live_data) {
-            startActivity(Intent(this, MainActivity::class.java))
-            true
-        } else
-            super.onOptionsItemSelected(item)
-    }
 
     // UI setup
     private fun setUpGraph() {
@@ -68,9 +61,12 @@ class GlobalComparisonActivity : AppCompatActivity() {
     private fun createSet(global:Boolean): LineDataSet {
         val set = LineDataSet(null, "" + if(global) "Global data" else "Your data")
         set.axisDependency = YAxis.AxisDependency.LEFT
-        set.lineWidth = 3f
+        set.lineWidth = if(global)
+                            1.67f
+                        else
+                            3f
         if(global) {
-            set.color = Color.MAGENTA
+            set.color = Color.argb(152,255,0,255)
             set.fillColor = Color.GREEN
         }
         else {
@@ -93,12 +89,13 @@ class GlobalComparisonActivity : AppCompatActivity() {
             dbGlobalRoot.collection("global").document("TH0qX6746EtSKFMR3UKG")
             document.get().addOnSuccessListener {
                 if (it.exists()) {
+                    Log.d("pulkit","global: $it")
                     for (i in arrTimeToXAxis.indices) {
-                        Log.d("pulkit", "global: adding $i")
+                        Log.d("pulkit", "global: adding $i    ${it.getDouble(arrTimeToXAxis[i])}")
                         set.addEntry(
                             Entry(
                                 i.toFloat(),
-                                it.getDouble(arrTimeToXAxis[i])?.toFloat() ?: 0f
+                                it.getDouble(arrTimeToXAxis[i])?.toFloat() ?: 50f
                             ))
                     }
                 } else {
@@ -115,7 +112,6 @@ class GlobalComparisonActivity : AppCompatActivity() {
                 delay(1)
             }
             Log.d("pulkit", "global: " + set.entryCount)
-            isFetchingComplete = true
         }
         return set
     }
@@ -123,16 +119,17 @@ class GlobalComparisonActivity : AppCompatActivity() {
     // user's own data set
     private suspend fun fetchMyData():LineDataSet {
         val set = createSet(false)
-
+        val map = HashMap<String,Float>()
             mAuth.signInAnonymously().addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     Log.d("pulkit",mAuth.uid!!)
-                    val document = dbGlobalRoot.collection("users").document(mAuth.uid!!)
+                    val document = dbGlobalRoot.collection(mAuth.uid!!).document("average")
                     document.get()
                         .addOnSuccessListener {
+                            Log.d("pulkit","local: $it")
                             if (it.exists()) {
                                 for (i in arrTimeToXAxis.indices) {
-                                    Log.d("pulkit", "local: adding $i")
+                                    Log.d("pulkit", "local: adding $i    ${it.getDouble(arrTimeToXAxis[i])}")
                                     set.addEntry(
                                         Entry(
                                             i.toFloat(),
@@ -152,10 +149,11 @@ class GlobalComparisonActivity : AppCompatActivity() {
             }
         GlobalScope.async(Dispatchers.IO)
         {
-            while (set.entryCount<24)
+            while (set.entryCount<48)
                 delay(1)
             Log.d("pulkit", "local: " + set.entryCount)
         }.await()
+        isFetchingComplete = true
         return set
     }
 
@@ -173,13 +171,25 @@ class GlobalComparisonActivity : AppCompatActivity() {
         }
     }
 
-    private fun switchOnGraphMode(data:LineData)
-    {
+    private fun switchOnGraphMode(data:LineData) {
         GlobalScope.launch(Dispatchers.Main) {
             graphGlobal.data = data
             data.notifyDataChanged()
             tvFetchError.visibility = View.GONE
+            svSharedPrefScroll.visibility = View.GONE
             graphGlobal.visibility = View.VISIBLE
         }
     }
+
+    private fun fetchSharedPrefs() {
+        val pref = getSharedPreferences(SHARED_PREF_NAME,Context.MODE_PRIVATE)
+        var str = ""
+        for(times in arrTimeToXAxis)
+        {
+            str+=(pref.getFloat(times,0f).toString()+"\n")
+        }
+        tvFetchError.text = str
+    }
+
+
 }
